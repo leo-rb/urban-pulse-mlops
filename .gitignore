@@ -1,0 +1,21 @@
+# --- Sécurité (Mots de passe) ---
+.env
+.env.local
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# --- IDE (Config VS Code) ---
+.vscode/
+.idea/
+
+# --- Données locales & Docker Volumes ---
+mlflow.db
+mlruns/
+mlartifacts/
+*.pkl
