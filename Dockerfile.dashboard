@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
 # Librairies
-RUN pip install streamlit pandas plotly sqlalchemy psycopg2-binary requests
+RUN pip install streamlit pandas plotly sqlalchemy psycopg2-binary requests python-dotenv
 
 # Copie du code
 COPY src/ /app/src/
