@@ -1,93 +1,74 @@
 import time
-import random
 import pandas as pd
-from datetime import datetime
+import numpy as np
 from sqlalchemy import create_engine, text
 import os
-from dotenv import load_dotenv
-from pathlib import Path
+import random
+from datetime import datetime, timedelta
 
-# --- 1. CHARGEMENT ROBUSTE DU .ENV ---
-# On cherche le fichier .env en remontant les dossiers
-env_path = Path(__file__).resolve().parent.parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
-
-# --- 2. RECUPERATION DES VARIABLES ---
-DB_USER = os.getenv("POSTGRES_USER", "urban_user") # Valeur par défaut si échec
-DB_PASS = os.getenv("POSTGRES_PASSWORD", "urban_password")
+# --- CONFIGURATION ---
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB", "urban_pulse_db")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5433")
+DB_USER = os.getenv("POSTGRES_USER", "urban_user")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "urban_password")
 
-print(f"🔧 DEBUG: Tentative de connexion vers {DB_HOST}...")
-print(f"🔧 DEBUG: Utilisateur={DB_USER}, DB={DB_NAME}")
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# --- 3. CREATION DU MOTEUR ---
-try:
-    connection_string = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    engine = create_engine(connection_string)
+def get_engine():
+    """Crée le moteur de connexion avec une boucle de réessai (Retry Logic)."""
+    max_retries = 20
+    wait_seconds = 5
     
-    # Test immédiat de connexion
-    with engine.connect() as conn:
-        print("✅ CONNEXION RÉUSSIE À LA BASE DE DONNÉES !")
-except Exception as e:
-    print(f"❌ ERREUR CRITIQUE DE CONNEXION : {e}")
-    exit()
-
-# --- 4. LA SIMULATION ---
-LOCATIONS = [
-    {"id": 1, "name": "Centre-Ville", "lat": 48.8566, "lon": 2.3522},
-    {"id": 2, "name": "Zone Industrielle", "lat": 48.8600, "lon": 2.3600},
-    {"id": 3, "name": "Parc Floral", "lat": 48.8400, "lon": 2.4500},
-    {"id": 4, "name": "Périphérique Nord", "lat": 48.9000, "lon": 2.3500}
-]
-
-def generate_sensor_data():
-    data = []
-    current_time = datetime.now()
+    for i in range(max_retries):
+        try:
+            print(f"🔌 Tentative de connexion à la DB ({i+1}/{max_retries})...")
+            engine = create_engine(DATABASE_URL)
+            # Test simple pour vérifier la connexion
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            print("✅ Connexion à la DB réussie !")
+            return engine
+        except Exception as e:
+            print(f"⚠️ La DB n'est pas encore prête : {e}")
+            print(f"⏳ Attente de {wait_seconds} secondes...")
+            time.sleep(wait_seconds)
     
-    for loc in LOCATIONS:
-        traffic_factor = random.uniform(0.5, 1.5)
-        pollution_factor = random.uniform(0.5, 1.5)
+    raise Exception("❌ Impossible de se connecter à la DB après plusieurs tentatives.")
 
-        if loc['name'] == "Périphérique Nord":
-            traffic = random.randint(50, 120)
-            co2 = random.uniform(400, 800) * pollution_factor
-        elif loc['name'] == "Parc Floral":
-            traffic = random.randint(0, 10)
-            co2 = random.uniform(300, 400)
-        else:
-            traffic = random.randint(10, 60) * traffic_factor
-            co2 = random.uniform(350, 500) * pollution_factor
+def generate_mock_data(n_rows=50):
+    """Génère des données factices."""
+    data = {
+        "timestamp": [datetime.now() - timedelta(minutes=i) for i in range(n_rows)],
+        # 👇 IMPORTANT : On utilise les noms de colonnes attendus par train_model.py
+        "pollution_level": [random.uniform(10, 150) for _ in range(n_rows)],
+        "temperature": [random.uniform(-5, 35) for _ in range(n_rows)],
+        "humidity": [random.uniform(20, 90) for _ in range(n_rows)],
+        "traffic_volume": [random.randint(50, 2000) for _ in range(n_rows)]
+    }
+    return pd.DataFrame(data)
 
-        record = {
-            "timestamp": current_time,
-            "location_id": loc['id'],
-            "location_name": loc['name'],
-            "temperature": round(random.uniform(10, 25), 1),
-            "traffic_density": int(traffic),
-            "co2_level": round(co2, 2),
-            "humidity": round(random.uniform(30, 70), 1)
-        }
-        data.append(record)
-    return data
-
-def run_simulation():
-    print("🚀 Démarrage de la simulation des capteurs...")
+def main():
+    print("🚀 Démarrage du générateur de données...")
     
-    try:
-        while True:
-            sensor_data = generate_sensor_data()
-            df = pd.DataFrame(sensor_data)
-            
-           
-            df.to_sql('sensor_data', engine, if_exists='append', index=False)
-            
-            print(f"📡 {len(df)} mesures envoyées à {datetime.now().strftime('%H:%M:%S')}")
-            time.sleep(5)
-            
-    except KeyboardInterrupt:
-        print("\n🛑 Simulation arrêtée.")
+    # 1. Obtenir la connexion (avec attente)
+    engine = get_engine()
+    
+    while True:
+        # 2. Générer les données
+        df = generate_mock_data(n_rows=50)
+        
+        # 3. Sauvegarder dans la DB (Table 'pollution_data')
+        try:
+            print("💾 Sauvegarde des données dans la table 'pollution_data'...")
+            # 'append' permet d'ajouter des données en continu
+            df.to_sql('pollution_data', engine, if_exists='append', index=False)
+            print(f"✅ Succès ! {len(df)} lignes insérées.")
+        except Exception as e:
+            print(f"❌ Erreur lors de l'insertion : {e}")
+        
+        # Pause de 5 secondes avant la prochaine vague
+        time.sleep(5)
 
 if __name__ == "__main__":
-    run_simulation()
+    main()
