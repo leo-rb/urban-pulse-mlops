@@ -23,7 +23,7 @@ Pré-requis : Avoir **Docker Desktop** installé.
    git clone https://github.com/leo-rb/urban-pulse-mlops.git
    cd urban-pulse-mlops
    docker-compose up -d --build
-``` 
+   ``` 
 
 2. Entrainer le modèle (une fois les conteneurs lancés)
 ```bash
