@@ -37,7 +37,7 @@ def load_data():
     try:
         connection_str = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
         engine = create_engine(connection_str)
-        query = "SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 100"
+        query = "SELECT * FROM pollution_data ORDER BY timestamp DESC LIMIT 100"
         df = pd.read_sql(query, engine)
         return df
     except Exception as e:
