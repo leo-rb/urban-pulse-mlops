@@ -1,9 +1,13 @@
 version: '3.8'
 
 services:
-  # --- 1. Base de données ---
+  # ---------------------------------------------------
+  # 1. BASE DE DONNÉES (PostgreSQL)
+  # ---------------------------------------------------
   db:
     image: postgres:15
+    container_name: urban_pulse_db  # Nom explicite pour éviter les confusions
+    restart: always
     environment:
       POSTGRES_USER: urban_user
       POSTGRES_PASSWORD: urban_password
@@ -13,25 +17,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      # 👇 C'est cette ligne qu'il faut corriger !
+      # Vérifie la connexion avec le bon utilisateur/DB
       test: ["CMD-SHELL", "pg_isready -U urban_user -d urban_pulse_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # --- 2. Interface Admin DB ---
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-
-  # --- 3. Stockage MinIO ---
+  # ---------------------------------------------------
+  # 2. STOCKAGE S3 (MinIO)
+  # ---------------------------------------------------
   minio:
     image: minio/minio
     container_name: urban_minio
+    restart: always
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -41,14 +39,15 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
-    # 👇 AJOUTE CE BLOC 👇
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
 
-  # --- 4. Serveur MLflow ---
+  # ---------------------------------------------------
+  # 3. MLFLOW (Tracking des modèles)
+  # ---------------------------------------------------
   mlflow:
     build:
       context: .
@@ -58,8 +57,9 @@ services:
     ports:
       - "5000:5000"
     environment:
-      # ✅ ICI : On force les valeurs en dur
+      # Connexion DB
       MLFLOW_BACKEND_STORE_URI: postgresql://urban_user:urban_password@db:5432/urban_pulse_db
+      # Connexion MinIO
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       AWS_ACCESS_KEY_ID: admin
       AWS_SECRET_ACCESS_KEY: password
@@ -75,53 +75,63 @@ services:
       minio:
         condition: service_healthy
 
-  # --- 5. APP : Générateur de données ---
+  # ---------------------------------------------------
+  # 4. GÉNÉRATEUR DE DONNÉES (Ingestion)
+  # ---------------------------------------------------
   generator:
     build:
       context: .
       dockerfile: Dockerfile.app
     container_name: urban_generator
     environment:
+      - PYTHONUNBUFFERED=1  # Important : Affiche les logs en direct
       - DB_HOST=db
       - DB_PORT=5432
       - POSTGRES_USER=urban_user
       - POSTGRES_PASSWORD=urban_password
       - POSTGRES_DB=urban_pulse_db
+      # Variables pour l'entraînement (MLflow/S3)
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=admin
       - AWS_SECRET_ACCESS_KEY=password
       - AWS_DEFAULT_REGION=us-east-1
+    # Lance le script ET garde le conteneur allumé (tail -f)
+    command: sh -c "python src/ingestion/mock_generator.py ; tail -f /dev/null"
     depends_on:
       db:
         condition: service_healthy
-    # 👇 LA LIGNE MAGIQUE ICI 👇
-    command: sh -c "python src/ingestion/mock_generator.py ; tail -f /dev/null"
 
-  # --- 6. APP : API de Prédiction ---
+  # ---------------------------------------------------
+  # 5. API (FastAPI)
+  # ---------------------------------------------------
   api:
     build:
       context: .
-      dockerfile: Dockerfile.app
+      dockerfile: Dockerfile.api
     container_name: urban_api
+    restart: always
     ports:
       - "8000:8000"
     environment:
       - DB_HOST=db
       - DB_NAME=urban_pulse_db
       - DB_USER=urban_user
-      - POSTGRES_PASSWORD=urban_password  # 👈 AJOUTE ÇA
-      - MLFLOW_TRACKING_URI=http://mlflow:5000}
-    command: uvicorn src.app.api:app --host 0.0.0.0 --port 8000
+      - POSTGRES_PASSWORD=urban_password # ✅ CORRECTION DASHBOARD
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
     depends_on:
-      - mlflow
+      db:
+        condition: service_healthy
 
-  # --- 7. APP : Dashboard Streamlit ---
+  # ---------------------------------------------------
+  # 6. DASHBOARD (Streamlit)
+  # ---------------------------------------------------
   dashboard:
     build:
       context: .
-      dockerfile: Dockerfile.app
+      dockerfile: Dockerfile.dashboard
     container_name: urban_dashboard
+    restart: always
     ports:
       - "8501:8501"
     environment:
@@ -129,11 +139,19 @@ services:
       - DB_HOST=db
       - DB_NAME=urban_pulse_db
       - DB_USER=urban_user
-      - POSTGRES_PASSWORD=urban_password
-    command: streamlit run src/app/dashboard.py
+      - POSTGRES_PASSWORD=urban_password # ✅ CORRECTION DASHBOARD
     depends_on:
-      - db
-      - api
+      api:
+        condition: service_started
+
+  # ---------------------------------------------------
+  # 7. ADMINER (Interface DB - Optionnel mais utile)
+  # ---------------------------------------------------
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:
