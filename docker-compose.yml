@@ -117,8 +117,12 @@ services:
       - DB_HOST=db
       - DB_NAME=urban_pulse_db
       - DB_USER=urban_user
-      - POSTGRES_PASSWORD=urban_password # ✅ CORRECTION DASHBOARD
+      - POSTGRES_PASSWORD=urban_password
       - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_DEFAULT_REGION=us-east-1
     depends_on:
       db:
         condition: service_healthy
