@@ -22,7 +22,7 @@ Pré-requis : Avoir **Docker Desktop** installé.
    ```bash
    git clone https://github.com/leo-rb/urban-pulse-mlops.git
    cd urban-pulse-mlops
-```
+   ```
 
 2. Lancer l'infrastructure
 ```bash
