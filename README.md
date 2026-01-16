@@ -18,7 +18,7 @@ Le projet est composé de 5 micro-services orchestrés par Docker Compose :
 
 Pré-requis : Avoir **Docker Desktop** installé.
 
-## 🚀 Démarrage Rapide (Zero Config)
+## Démarrage Rapide (Zero Config)
 
 Le projet est entièrement automatisé. Pas besoin de configuration manuelle.
 
