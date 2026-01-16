@@ -21,7 +21,7 @@ DB_NAME = os.getenv("POSTGRES_DB", "urban_pulse_db")
 
 # URL de ton API (FastAPI)
 default_api_url = "http://localhost:8000/predict"
-API_URL = os.getenv("API_URL", default_api_url)
+API_URL = os.getenv("API_URL", "http://api:8000").rstrip("/")
 
 # Configuration de la page
 st.set_page_config(page_title="Urban Pulse Dashboard", layout="wide")
@@ -101,8 +101,10 @@ if predict_btn:
     }
     
     try:
-        # Appel à l'API
-        response = requests.post(API_URL, json=payload)
+        with st.spinner('Interrogation du modèle...'):
+            # On force l'URL propre sans risque de double slash
+            endpoint = f"{API_URL}/predict"
+            response = requests.post(endpoint, json=payload)
         
         if response.status_code == 200:
             result = response.json()
