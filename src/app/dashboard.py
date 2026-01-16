@@ -108,10 +108,10 @@ if predict_btn:
         
         if response.status_code == 200:
             result = response.json()
-            pred_co2 = result['predicted_co2']
+            pred_value = result.get("pollution_prediction", result.get("predicted_co2", 0))
             alert = result['alert_level']
             
-            st.success("✅ Prédiction réussie !")
+            st.sidebar.success(f"🎯 Pollution estimée : {pred_value:.2f}")
             
             # Affichage du résultat en gros
             col_res1, col_res2 = st.columns(2)
