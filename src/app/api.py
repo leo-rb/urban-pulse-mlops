@@ -1,44 +1,51 @@
 import os
+import time
 import mlflow.pyfunc
+from mlflow.tracking import MlflowClient
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from dotenv import load_dotenv
 
-# Charger les variables d'environnement (pour le local)
-load_dotenv()
+# --- CONFIG DOCKER (Valeurs par défaut pour la démo) ---
+mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+mlflow.set_tracking_uri(mlflow_uri)
 
-# --- CONFIGURATION DYNAMIQUE (DOCKER vs LOCAL) ---
-
-mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-mlflow.set_tracking_uri(mlflow_tracking_uri)
-
-os.environ['MLFLOW_S3_ENDPOINT_URL'] = os.getenv("MLFLOW_S3_ENDPOINT_URL", "http://localhost:9000")
-
-
+os.environ['MLFLOW_S3_ENDPOINT_URL'] = os.getenv("MLFLOW_S3_ENDPOINT_URL", "http://minio:9000")
 os.environ['AWS_ACCESS_KEY_ID'] = os.getenv("MINIO_ROOT_USER", "admin")
 os.environ['AWS_SECRET_ACCESS_KEY'] = os.getenv("MINIO_ROOT_PASSWORD", "password")
 
-# --- TON RUN ID (À mettre à jour manuellement après chaque entraînement)
-RUN_ID = "17ecca6742ee404caff6fd0454fcaf19"  
-app = FastAPI(title="Urban Pulse API", description="Prédiction de pollution CO2")
-
-# Variable globale pour stocker le modèle chargé
+app = FastAPI(title="Urban Pulse API", description="Démo Automatique")
 model = None
+
+def get_latest_model():
+    """Cherche automatiquement le dernier modèle entraîné dans MLflow"""
+    client = MlflowClient()
+    experiment_name = "UrbanPulse_Pollution_Prediction"
+    
+    # On cherche l'expérience
+    experiment = client.get_experiment_by_name(experiment_name)
+    if experiment is None:
+        print("⚠️ Expérience non trouvée (L'entraînement n'a pas encore commencé ?)")
+        return None
+
+    # On cherche le run le plus récent
+    runs = client.search_runs(
+        experiment_ids=[experiment.experiment_id],
+        order_by=["start_time DESC"],
+        max_results=1
+    )
+    
+    if not runs:
+        return None
+    
+    latest_run_id = runs[0].info.run_id
+    print(f"🔄 Dernier modèle trouvé : {latest_run_id}")
+    return f"runs:/{latest_run_id}/random_forest_model"
 
 @app.on_event("startup")
 def load_model():
-    global model
-    try:
-        model_uri = f"runs:/{RUN_ID}/random_forest_model"
-        print(f"📥 Chargement du modèle depuis : {model_uri} ...")
-        print(f"🌍 Endpoint S3 utilisé : {os.environ['MLFLOW_S3_ENDPOINT_URL']}")
-        
-        model = mlflow.pyfunc.load_model(model_uri)
-        print("✅ Modèle chargé avec succès !")
-    except Exception as e:
-        print(f"❌ Erreur critique : Impossible de charger le modèle. {e}")
-   
+    # On ne fait rien au démarrage bloquant, on chargera à la première requête
+    pass
 
 class PredictionInput(BaseModel):
     traffic_density: float
@@ -49,22 +56,23 @@ class PredictionInput(BaseModel):
 
 @app.post("/predict")
 def predict(input_data: PredictionInput):
-    if model is None:
-        raise HTTPException(status_code=500, detail="Modèle non chargé.")
+    global model
     
-    try:
-        # Conversion en DataFrame
-        data = pd.DataFrame([input_data.dict()])
-        
-        # Prédiction
-        prediction = model.predict(data)
-        
-        # Seuil d'alerte (Calibré pour la démo)
-        alert_level = "HIGH" if prediction[0] > 420 else "NORMAL"
-        
-        return {
-            "predicted_co2": round(float(prediction[0]), 2),
-            "alert_level": alert_level
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur de prédiction : {str(e)}")
+    # LAZY LOADING : Si le modèle n'est pas là, on essaie de le charger maintenant
+    if model is None:
+        model_uri = get_latest_model()
+        if model_uri:
+            try:
+                model = mlflow.pyfunc.load_model(model_uri)
+                print("✅ Modèle chargé à la volée !")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Erreur chargement S3: {e}")
+        else:
+            raise HTTPException(status_code=503, detail="Modèle en cours d'entraînement... Réessayez dans 30 secondes !")
+
+    # Prédiction normale
+    data = pd.DataFrame([input_data.dict()])
+    prediction = model.predict(data)
+    alert = "HIGH" if prediction[0] > 450 else "NORMAL"
+    
+    return {"predicted_co2": round(prediction[0], 2), "alert_level": alert}
