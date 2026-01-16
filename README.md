@@ -18,12 +18,15 @@ Le projet est composé de 5 micro-services orchestrés par Docker Compose :
 
 Pré-requis : Avoir **Docker Desktop** installé.
 
-1. **Cloner le projet**
-   ```bash
-   git clone https://github.com/leo-rb/urban-pulse-mlops.git
-   cd urban-pulse-mlops
-   docker-compose up -d --build
-   ``` 
+## 🚀 Démarrage Rapide (Zero Config)
+
+Le projet est entièrement automatisé. Pas besoin de configuration manuelle.
+
+### 1. Lancer l'application
+```bash
+git clone [https://github.com/leo-rb/urban-pulse-mlops.git](https://github.com/leo-rb/urban-pulse-mlops.git)
+cd urban-pulse-mlops
+docker-compose up -d --build
 
 2. Entrainer le modèle (une fois les conteneurs lancés)
 ```bash
