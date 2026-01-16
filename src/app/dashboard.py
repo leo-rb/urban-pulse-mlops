@@ -55,7 +55,7 @@ if not df.empty:
     
     with col1:
         st.subheader("📉 Niveau de CO2")
-        fig_co2 = px.line(df, x='timestamp', y='co2_level', title='Évolution du CO2', color_discrete_sequence=['#FF4B4B'])
+        fig_co2 = px.line(df, x='timestamp', y='pollution_level', title='Évolution du CO2', color_discrete_sequence=['#FF4B4B'])
         st.plotly_chart(fig_co2, use_container_width=True)
         
     with col2:
@@ -64,7 +64,7 @@ if not df.empty:
         st.plotly_chart(fig_traffic, use_container_width=True)
 
     # Affichage des statistiques
-    st.metric("Dernier relevé CO2", f"{df.iloc[0]['co2_level']} ppm", delta_color="inverse")
+    st.metric("Dernier relevé CO2", f"{df.iloc[0]['pollution_level']} ppm", delta_color="inverse")
 else:
     st.warning("Aucune donnée trouvée. Vérifie que le générateur (mock_generator.py) tourne bien.")
 
