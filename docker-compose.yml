@@ -125,12 +125,11 @@ services:
     ports:
       - "8501:8501"
     environment:
+      - API_URL=http://api:8000
       - DB_HOST=db
-      - DB_PORT=5432
-      - API_URL=http://api:8000/predict
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - DB_NAME=urban_pulse_db
+      - DB_USER=urban_user
+      - POSTGRES_PASSWORD=urban_password
     command: streamlit run src/app/dashboard.py
     depends_on:
       - db
