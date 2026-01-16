@@ -6,8 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
 # Librairies
-RUN pip install fastapi uvicorn pandas mlflow boto3 sqlalchemy psycopg2-binary pydantic
-
+RUN pip install fastapi uvicorn pandas mlflow==2.9.2 boto3 sqlalchemy psycopg2-binary pydantic
 # Copie du code
 COPY src/ /app/src/
 

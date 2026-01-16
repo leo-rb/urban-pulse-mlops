@@ -1,5 +1,5 @@
 FROM python:3.11-slim
 
 RUN pip install mlflow boto3 psycopg2-binary
-
+RUN pip install mlflow==2.9.2 boto3 psycopg2-binary
 CMD ["mlflow", "server", "--host", "0.0.0.0"]
