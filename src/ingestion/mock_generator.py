@@ -37,10 +37,9 @@ def get_engine():
     raise Exception("❌ Impossible de se connecter à la DB après plusieurs tentatives.")
 
 def generate_mock_data(n_rows=50):
-    """Génère des données factices."""
+    """Génère des données factices compatibles avec le modèle."""
     data = {
         "timestamp": [datetime.now() - timedelta(minutes=i) for i in range(n_rows)],
-        # 👇 IMPORTANT : On utilise les noms de colonnes attendus par train_model.py
         "pollution_level": [random.uniform(10, 150) for _ in range(n_rows)],
         "temperature": [random.uniform(-5, 35) for _ in range(n_rows)],
         "humidity": [random.uniform(20, 90) for _ in range(n_rows)],
@@ -58,10 +57,9 @@ def main():
         # 2. Générer les données
         df = generate_mock_data(n_rows=50)
         
-        # 3. Sauvegarder dans la DB (Table 'pollution_data')
+        # 3. Sauvegarder dans la DB
         try:
             print("💾 Sauvegarde des données dans la table 'pollution_data'...")
-            # 'append' permet d'ajouter des données en continu
             df.to_sql('pollution_data', engine, if_exists='append', index=False)
             print(f"✅ Succès ! {len(df)} lignes insérées.")
         except Exception as e:
