@@ -75,6 +75,8 @@ services:
       context: .
       dockerfile: Dockerfile.app
     container_name: urban_generator
+    environment:
+      - PYTHONUNBUFFERED=1
       - DB_HOST=db 
       - DB_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER}
