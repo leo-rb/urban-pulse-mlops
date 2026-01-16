@@ -16,7 +16,7 @@ load_dotenv(dotenv_path=env_path)
 DB_USER = os.getenv("POSTGRES_USER", "urban_user")
 DB_PASS = os.getenv("POSTGRES_PASSWORD", "urban_password")
 DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5433")
+DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB", "urban_pulse_db")
 
 # URL de ton API (FastAPI)

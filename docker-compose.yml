@@ -79,6 +79,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1  # Important : Affiche les logs
       - DB_HOST=db
+      - DB_PORT=5432
       - POSTGRES_DB=urban_pulse_db
       - POSTGRES_USER=urban_user
       - POSTGRES_PASSWORD=urban_password
@@ -109,6 +110,7 @@ services:
       - DB_HOST=db
       - DB_NAME=urban_pulse_db
       - DB_USER=urban_user
+      - DB_PORT=5432
       - POSTGRES_PASSWORD=urban_password
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       # Clés pour télécharger le modèle S3
@@ -137,6 +139,7 @@ services:
       - DB_HOST=db
       - DB_NAME=urban_pulse_db
       - DB_USER=urban_user
+      - DB_PORT=5432
       - POSTGRES_PASSWORD=urban_password
     depends_on:
       api:
