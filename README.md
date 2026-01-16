@@ -71,3 +71,4 @@ Quand tu as fini de jouer :
     ```powershell
     docker-compose down -v
     ```
+3. **Penser à supprimer le dossier créé en suivant le chemin d'accès utilisé dans le terminal**
