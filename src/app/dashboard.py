@@ -100,30 +100,22 @@ if predict_btn:
         "location_id": location
     }
     
-    try:
-        with st.spinner('Interrogation du modèle...'):
-            # On force l'URL propre sans risque de double slash
-            endpoint = f"{API_URL}/predict"
-            response = requests.post(endpoint, json=payload)
-        
-        if response.status_code == 200:
+    if response.status_code == 200:
             result = response.json()
-            pred_value = result.get("pollution_prediction", result.get("predicted_co2", 0))
-            alert = result['alert_level']
             
+            # 1. On récupère la valeur de prédiction
+            pred_value = result.get("pollution_prediction", result.get("predicted_co2", 0))
+            
+            # 2. On affiche le résultat principal
             st.sidebar.success(f"🎯 Pollution estimée : {pred_value:.2f}")
             
-            # Affichage du résultat en gros
-            col_res1, col_res2 = st.columns(2)
-            col_res1.metric("Pollution Prédite (CO2)", f"{pred_co2} ppm")
-            
-            if alert == "HIGH":
-                col_res2.error("🚨 ALERTE : NIVEAU CRITIQUE")
+            # 3. ON CALCULE L'ALERTE ICI (Au lieu de la chercher dans 'result')
+            if pred_value > 100:
+                st.sidebar.error("🚨 Alerte : Pollution élevée !")
+            elif pred_value > 50:
+                st.sidebar.warning("⚠️ Attention : Qualité moyenne")
             else:
-                col_res2.success("🟢 NIVEAU NORMAL")
+                st.sidebar.info("✅ Qualité de l'air : Bonne")
                 
         else:
-            st.error(f"Erreur API : {response.text}")
-            
-    except requests.exceptions.ConnectionError:
-        st.error("❌ Impossible de contacter l'API. Vérifie que 'api.py' est bien lancé dans un terminal.")
+            st.sidebar.error(f"Erreur API : {response.status_code}")
