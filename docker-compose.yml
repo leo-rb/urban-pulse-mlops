@@ -4,18 +4,17 @@ services:
   # --- 1. Base de données ---
   db:
     image: postgres:15
-    container_name: urban_db
-    restart: always
     environment:
       POSTGRES_USER: urban_user
       POSTGRES_PASSWORD: urban_password
       POSTGRES_DB: urban_pulse_db
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      # 👇 C'est cette ligne qu'il faut corriger !
+      test: ["CMD-SHELL", "pg_isready -U urban_user -d urban_pulse_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -37,11 +36,17 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+    # 👇 AJOUTE CE BLOC 👇
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   # --- 4. Serveur MLflow ---
   mlflow:
@@ -53,13 +58,14 @@ services:
     ports:
       - "5000:5000"
     environment:
-      MLFLOW_BACKEND_STORE_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # ✅ ICI : On force les valeurs en dur
+      MLFLOW_BACKEND_STORE_URI: postgresql://urban_user:urban_password@db:5432/urban_pulse_db
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
     command: >
       mlflow server
-      --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      --backend-store-uri postgresql://urban_user:urban_password@db:5432/urban_pulse_db
       --default-artifact-root s3://mlflow/
       --host 0.0.0.0
       --port 5000
@@ -67,7 +73,7 @@ services:
       db:
         condition: service_healthy
       minio:
-        condition: service_started
+        condition: service_healthy
 
   # --- 5. APP : Générateur de données ---
   generator:
@@ -76,20 +82,21 @@ services:
       dockerfile: Dockerfile.app
     container_name: urban_generator
     environment:
-      - PYTHONUNBUFFERED=1
-      - DB_HOST=db 
+      - DB_HOST=db
       - DB_PORT=5432
       - POSTGRES_USER=urban_user
       - POSTGRES_PASSWORD=urban_password
       - POSTGRES_DB=urban_pulse_db
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
-    command: python src/ingestion/mock_generator.py
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_DEFAULT_REGION=us-east-1
     depends_on:
       db:
         condition: service_healthy
+    # 👇 LA LIGNE MAGIQUE ICI 👇
+    command: sh -c "python src/ingestion/mock_generator.py ; tail -f /dev/null"
 
   # --- 6. APP : API de Prédiction ---
   api:
