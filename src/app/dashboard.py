@@ -100,22 +100,21 @@ if predict_btn:
         "location_id": location
     }
     
-    if response.status_code == 200:
+    # --- BLOC DE PRÉDICTION À VÉRIFIER ---
+        if response.status_code == 200:
             result = response.json()
-            
-            # 1. On récupère la valeur de prédiction
+            # On récupère la valeur
             pred_value = result.get("pollution_prediction", result.get("predicted_co2", 0))
-            
-            # 2. On affiche le résultat principal
+            # On affiche le succès
             st.sidebar.success(f"🎯 Pollution estimée : {pred_value:.2f}")
             
-            # 3. ON CALCULE L'ALERTE ICI (Au lieu de la chercher dans 'result')
+            # Calcul de l'alerte
             if pred_value > 100:
                 st.sidebar.error("🚨 Alerte : Pollution élevée !")
             elif pred_value > 50:
                 st.sidebar.warning("⚠️ Attention : Qualité moyenne")
             else:
                 st.sidebar.info("✅ Qualité de l'air : Bonne")
-                
         else:
-            st.sidebar.error(f"Erreur API : {response.status_code}")
+            # CETTE LIGNE DOIT ÊTRE ALIGNÉE AVEC LE 'if response.status_code == 200:'
+            st.sidebar.error(f"Erreur API : {response.text}")
