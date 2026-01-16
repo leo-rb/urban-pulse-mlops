@@ -107,12 +107,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - DB_HOST=db
+      - DB_NAME=urban_pulse_db
+      - DB_USER=urban_user
+      - POSTGRES_PASSWORD=urban_password  # 👈 AJOUTE ÇA
+      - MLFLOW_TRACKING_URI=http://mlflow:5000}
     command: uvicorn src.app.api:app --host 0.0.0.0 --port 8000
     depends_on:
       - mlflow
