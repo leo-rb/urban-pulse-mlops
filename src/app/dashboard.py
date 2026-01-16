@@ -60,7 +60,7 @@ if not df.empty:
         
     with col2:
         st.subheader("🚗 Densité du Trafic")
-        fig_traffic = px.area(df, x='timestamp', y='traffic_density', title='Densité du Trafic', color_discrete_sequence=['#3d9dfc'])
+        fig_traffic = px.area(df, x='timestamp', y='traffic_volume', title='Densité du Trafic', color_discrete_sequence=['#3d9dfc'])
         st.plotly_chart(fig_traffic, use_container_width=True)
 
     # Affichage des statistiques
