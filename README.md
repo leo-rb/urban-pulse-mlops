@@ -22,19 +22,15 @@ Pré-requis : Avoir **Docker Desktop** installé.
    ```bash
    git clone https://github.com/leo-rb/urban-pulse-mlops.git
    cd urban-pulse-mlops
-   ```
-
-2. Lancer l'infrastructure
-```bash
-   docker compose up -d
+   docker-compose up -d --build
 ``` 
 
-3. Entrainer le modèle (une fois les conteneurs lancés)
+2. Entrainer le modèle (une fois les conteneurs lancés)
 ```bash
    docker exec urban_generator python src/modeling/train_model.py
 ```
 
-4. Accéder aux interfaces
+3. Accéder aux interfaces
 Dashboard : http://localhost:8501
 
 MLflow UI : http://localhost:5000
