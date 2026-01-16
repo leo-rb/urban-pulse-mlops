@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Dépendances système
+RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+
+# Librairies
+RUN pip install fastapi uvicorn pandas mlflow boto3 sqlalchemy psycopg2-binary pydantic
+
+# Copie du code
+COPY src/ /app/src/
+
+# Lancement
+CMD ["uvicorn", "src.app.api:app", "--host", "0.0.0.0", "--port", "8000"]

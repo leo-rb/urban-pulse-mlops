@@ -1,12 +1,14 @@
 FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y build-essential libpq-dev && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Installation des dépendances système pour psycopg2
+RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
-COPY . .
+# Installation des librairies Python
+RUN pip install pandas sqlalchemy psycopg2-binary python-dotenv mlflow boto3
 
-CMD ["echo", "Container ready"]
+# Copie du code
+COPY src/ /app/src/
+
+CMD ["python", "src/ingestion/mock_generator.py"]

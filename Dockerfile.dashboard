@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Dépendances système
+RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+
+# Librairies
+RUN pip install streamlit pandas plotly sqlalchemy psycopg2-binary requests
+
+# Copie du code
+COPY src/ /app/src/
+
+# Lancement
+CMD ["streamlit", "run", "src/app/dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
