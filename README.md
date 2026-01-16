@@ -24,7 +24,7 @@ Le projet est entièrement automatisé. Pas besoin de configuration manuelle.
 
 ### 1. Lancer l'application
 ```bash
-git clone [https://github.com/leo-rb/urban-pulse-mlops.git](https://github.com/leo-rb/urban-pulse-mlops.git)
+git clone https://github.com/leo-rb/urban-pulse-mlops.git
 cd urban-pulse-mlops
 docker-compose up -d --build
 ```
