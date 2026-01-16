@@ -7,9 +7,9 @@ services:
     container_name: urban_db
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: urban_user
+      POSTGRES_PASSWORD: urban_password
+      POSTGRES_DB: urban_pulse_db
     ports:
       - "5433:5432"
     volumes:
