@@ -27,6 +27,7 @@ Le projet est entièrement automatisé. Pas besoin de configuration manuelle.
 git clone [https://github.com/leo-rb/urban-pulse-mlops.git](https://github.com/leo-rb/urban-pulse-mlops.git)
 cd urban-pulse-mlops
 docker-compose up -d --build
+```
 
 2. Entrainer le modèle (une fois les conteneurs lancés)
 ```bash
