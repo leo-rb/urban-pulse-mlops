@@ -2,113 +2,87 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
-from sqlalchemy import create_engine
 import os
+from sqlalchemy import create_engine
 from dotenv import load_dotenv
-from pathlib import Path
+
+load_dotenv()
 
 # --- CONFIGURATION ---
-# Chargement du .env pour la DB
-env_path = Path(__file__).resolve().parent.parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
-
-# Connexion DB (Port 5433)
-DB_USER = os.getenv("POSTGRES_USER", "urban_user")
-DB_PASS = os.getenv("POSTGRES_PASSWORD", "urban_password")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("POSTGRES_DB", "urban_pulse_db")
-
-# URL de ton API (FastAPI)
-default_api_url = "http://localhost:8000/predict"
-API_URL = os.getenv("API_URL", "http://api:8000").rstrip("/")
-
-# Configuration de la page
 st.set_page_config(page_title="Urban Pulse Dashboard", layout="wide")
 
-st.title("🏙️ Urban Pulse : AI Control Center")
-st.markdown("Surveillance de la pollution et prédictions IA en temps réel.")
+API_URL = os.getenv("API_URL", "http://api:8000").rstrip("/")
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_NAME = os.getenv("DB_NAME", "urban_pulse_db")
+DB_USER = os.getenv("DB_USER", "urban_user")
+DB_PASS = os.getenv("POSTGRES_PASSWORD", "urban_password")
 
-# --- PARTIE 1 : VISUALISATION (Données Historiques) ---
-st.header("1. Données en Temps Réel (Postgres)")
+# Connexion Base de données
+@st.cache_resource
+def get_db_engine():
+    conn_str = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:5432/{DB_NAME}"
+    return create_engine(conn_str)
 
+engine = get_db_engine()
+
+# --- CHARGEMENT DES DONNÉES ---
 def load_data():
-    """Charge les 100 dernières mesures depuis la base de données"""
-    try:
-        connection_str = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        engine = create_engine(connection_str)
-        query = "SELECT * FROM pollution_data ORDER BY timestamp DESC LIMIT 100"
-        df = pd.read_sql(query, engine)
-        return df
-    except Exception as e:
-        st.error(f"Erreur de connexion à la base de données : {e}")
-        return pd.DataFrame()
+    query = "SELECT * FROM pollution_data ORDER BY timestamp DESC LIMIT 100"
+    return pd.read_sql(query, engine)
 
-if st.button('🔄 Rafraîchir les données'):
-    st.rerun()
+st.title("🏙️ Urban Pulse - Monitoring Air & Trafic")
 
-df = load_data()
+try:
+    df = load_data()
 
-if not df.empty:
-    # Création de deux colonnes pour les graphiques
+    # --- LAYOUT DASHBOARD ---
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        st.subheader("📉 Niveau de CO2")
-        fig_co2 = px.line(df, x='timestamp', y='pollution_level', title='Évolution du CO2', color_discrete_sequence=['#FF4B4B'])
-        st.plotly_chart(fig_co2, use_container_width=True)
-        
+        st.subheader("Niveau de Pollution (AQI)")
+        fig_line = px.line(df, x='timestamp', y='pollution_level', 
+                           color_discrete_sequence=['#FF4B4B'], markers=True)
+        st.plotly_chart(fig_line, use_container_width=True)
+
     with col2:
-        st.subheader("🚗 Densité du Trafic")
-        fig_traffic = px.area(df, x='timestamp', y='traffic_volume', title='Densité du Trafic', color_discrete_sequence=['#3d9dfc'])
+        st.subheader("Volume du Trafic")
+        fig_traffic = px.area(df, x='timestamp', y='traffic_volume', 
+                             color_discrete_sequence=['#3d9dfc'])
         st.plotly_chart(fig_traffic, use_container_width=True)
 
-    # Affichage des statistiques
-    st.metric("Dernier relevé CO2", f"{df.iloc[0]['pollution_level']} ppm", delta_color="inverse")
-else:
-    st.warning("Aucune donnée trouvée. Vérifie que le générateur (mock_generator.py) tourne bien.")
+    st.subheader("Corrélation Trafic vs Pollution")
+    fig_scatter = px.scatter(df, x='traffic_volume', y='pollution_level', color='temperature',
+                             size='humidity', hover_data=['timestamp'])
+    st.plotly_chart(fig_scatter, use_container_width=True)
 
-st.markdown("---")
+except Exception as e:
+    st.error(f"Erreur de connexion à la base de données : {e}")
 
-# --- PARTIE 2 : SIMULATION IA (Appel API) ---
-st.header("2. Simulateur Prédictif (IA)")
-st.info("Utilisez les curseurs ci-dessous pour simuler une situation et demander une prédiction à l'IA.")
+# --- SIDEBAR : PRÉDICTION ---
+st.sidebar.header("🔮 Prédiction IA")
+temp = st.sidebar.slider("Température (°C)", -10, 45, 20)
+hum = st.sidebar.slider("Humidité (%)", 0, 100, 50)
+traf = st.sidebar.number_input("Volume Trafic (véhicules/h)", 0, 5000, 500)
 
-# Formulaire de saisie (Sidebar ou Colonnes)
-c1, c2, c3 = st.columns(3)
-
-with c1:
-    traffic = st.slider("🚗 Densité Trafic", 0, 100, 50)
-    hour = st.slider("🕒 Heure de la journée", 0, 23, 12)
-
-with c2:
-    temp = st.slider("🌡️ Température (°C)", -10.0, 40.0, 20.0)
-    humidity = st.slider("💧 Humidité (%)", 0, 100, 50)
-
-with c3:
-    location = st.selectbox("📍 Quartier (ID)", [1, 2, 3])
-    predict_btn = st.button("🔮 Lancer la Prédiction", type="primary")
-
-# Action du bouton
-if predict_btn:
-    # Préparation du JSON pour l'API
+if st.sidebar.button("Lancer la prédiction 🚀"):
     payload = {
-        "traffic_density": traffic,
-        "temperature": temp,
-        "humidity": humidity,
-        "hour": hour,
-        "location_id": location
+        "temperature": float(temp),
+        "humidity": float(hum),
+        "traffic_volume": float(traf)
     }
     
-    # --- BLOC DE PRÉDICTION À VÉRIFIER ---
+    try:
+        endpoint = f"{API_URL}/predict"
+        response = requests.post(endpoint, json=payload)
+        
         if response.status_code == 200:
             result = response.json()
-            # On récupère la valeur
+            # Récupération de la valeur (gestion des deux clés possibles)
             pred_value = result.get("pollution_prediction", result.get("predicted_co2", 0))
-            # On affiche le succès
+            
             st.sidebar.success(f"🎯 Pollution estimée : {pred_value:.2f}")
             
-            # Calcul de l'alerte
+            # Affichage de l'alerte locale
             if pred_value > 100:
                 st.sidebar.error("🚨 Alerte : Pollution élevée !")
             elif pred_value > 50:
@@ -116,5 +90,7 @@ if predict_btn:
             else:
                 st.sidebar.info("✅ Qualité de l'air : Bonne")
         else:
-            # CETTE LIGNE DOIT ÊTRE ALIGNÉE AVEC LE 'if response.status_code == 200:'
-            st.sidebar.error(f"Erreur API : {response.text}")
+            st.sidebar.error(f"Erreur API ({response.status_code}) : {response.text}")
+            
+    except Exception as e:
+        st.sidebar.error(f"Impossible de contacter l'API : {e}")
